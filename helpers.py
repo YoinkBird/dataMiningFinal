@@ -108,6 +108,142 @@ def get_ax_time(**kwargs):
     return ax_time
 
 
+# DOC: bar plot https://pythonspot.com/en/matplotlib-bar-chart/
+# special bar charts:
+# horiz 0 (default) : bar  chart with 45-degreee angled labels
+# horiz 1           : hbar chart with largest value on top
+# usage:
+# pie chart - not very useful
+# clf_imp_feats = print_model_feats_important(<model>, predictors)
+# clf_imp_feats.value_counts().plot(kind='pie');plt.show()
+# ax = get_ax_bar(clf_imp_feats, title="DecisionTree Important Features")
+# plt.show()
+# ax = get_ax_barh(clf_imp_feats, title="DecisionTree Important Features")
+# plt.show()
+def get_ax_bar(pdser, **kwargs):
+    interval = '24h'
+    horiz = 0
+    title = ''
+    xlabel = ''
+    ylabel = ''
+    if('title' in kwargs):
+        title = kwargs['title']
+    if('horiz' in kwargs):
+        horiz = kwargs['horiz']
+    if('xlabel' in kwargs):
+        xlabel = kwargs['xlabel']
+    if('ylabel' in kwargs):
+        ylabel = kwargs['ylabel']
+    if('interval' in kwargs):
+        interval = kwargs['interval']
+    #######################################
+    ax_rot = plt.subplot(111)
+    label = []
+    for i,index_name in enumerate(pdser.index):
+        label.append("%s : %0.6f" % (index_name, pdser[i]))
+    if(horiz == 0):
+      ax_rot.set_xticks(range(0,len(pdser.index)))
+      ax_rot.set_xticklabels(pdser.index, rotation=45, rotation_mode="anchor", ha="right") ;
+      ax_rot.bar(np.arange(len(pdser.index)), pdser.values)
+      ax_rot.set_title(title)
+    elif(horiz == 1):
+      # reverse the labels, values to sort descending instead  of ascending
+      # sort can be np.flip(<list>, axis=0) or <list>[::-1] DOC: reverse any list/array http://stackoverflow.com/questions/15748001/reversed-array-in-numpy
+      ax_rot.set_yticks(range(0,len(pdser.index)));
+      ax_rot.set_yticklabels(pdser.index[::-1])
+      ax_rot.set_yticklabels(label[::-1])
+      ax_rot.barh(np.flip(np.arange(len(pdser.index)), axis=0), pdser.values)
+      ax_rot.set_title(title)
+
+    ax_rot.set_xlabel(xlabel)
+    ax_rot.set_ylabel(ylabel)
+    return ax_rot
+
+# horizontal barchart
+def get_ax_barh(pdser, **kwargs):
+    kwargs['horiz'] = 1
+    return(get_ax_bar(pdser, **kwargs))
+ 
+
+# src: http://scikit-learn.org/stable/auto_examples/model_selection/plot_confusion_matrix.html#sphx-glr-auto-examples-model-selection-plot-confusion-matrix-py
+#  confusion_matrix(y_test.values.ravel(),y_pred[:,1])
+'''
+# usage
+from sklearn.metrics import confusion_matrix
+#  print(confusion_matrix(y_full, pred_full))
+cm = confusion_matrix(y_full, pred_full)
+#  print(cm)
+class_names=['down','up']
+plot_confusion_matrix(cm, classes=class_names)
+plt.show()
+'''
+
+def plot_confusion_matrix(cm, classes,
+                          normalize=False,
+                          title='Confusion matrix',
+                          cmap=plt.cm.Blues):
+    import itertools
+    """
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
+    """
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45, rotation_mode="anchor",ha="right")
+    plt.yticks(tick_marks, classes)
+
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+
+    #print(cm)
+
+    thresh = cm.max() / 2.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, cm[i, j],
+                 horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
+
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+
+# DOC: How to interpret decision trees' graph results and find most informative features?
+# src: http://stackoverflow.com/a/34872454
+def print_model_feats_important(model, predictors, printout=1):
+    ser = pd.Series()
+    for i in np.argsort(model.feature_importances_)[::-1]:
+      if model.feature_importances_[i] == 0:
+        continue
+      ser = ser.append(pd.Series([model.feature_importances_[i]], index=[predictors[i]]))
+      if(printout):
+        #print("%f : %s" % (model.feature_importances_[i],predictors[i]))
+        print("%f : %s" % (ser.ix[predictors[i]],predictors[i]))
+    return ser
+
+def print_imp_feats_piecharts(data,featdef, model,predictors):
+    # plot important features
+    alreadyseen = {}
+    for i in np.argsort(model.feature_importances_)[::-1]:
+      feat = predictors[i]
+      #feat = predictors[i].replace('bin_','')
+      pltkind = 'pie'
+      print("%s" % ( feat))
+      if(featdef.ix[feat].origin):
+          feat_orig = featdef.ix[predictors[i]].origin
+          #print("testing %s - %s" % ( feat_orig, feat))
+          if(not feat_orig in alreadyseen):
+              alreadyseen[feat_orig] = 1
+              data[feat_orig].value_counts().plot(kind=pltkind, title="%s - original values for %s" % (feat_orig, feat))
+          #else:
+              #print("%d for %s - skipping %s" % (alreadyseen[feat_orig], feat_orig, feat))
+      else:
+          data[feat].value_counts().plot(kind=pltkind, title="%s " % (feat))
+      plt.show()
 
 if(__name__ == '__main__'):
     test_timeconversion = 1
@@ -142,3 +278,6 @@ if(__name__ == '__main__'):
             if(int(testtimes2[i].replace(':','')) == rettime):
                 status = "PASS"
             print("%s: %6s: %s == %s ?" % (status, testtime , testtimes2[i] , rettime))
+    if(1):
+        print("-W-: NOT testing get_ax_time")
+        print("-W-: NOT testing print_model_feats_important")

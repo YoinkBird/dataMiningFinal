@@ -83,14 +83,6 @@ df_int_nonan = df_int.dropna()
 
 print("-I-: train-test split")
 
-# DOC: How to interpret decision trees' graph results and find most informative features?
-# src: http://stackoverflow.com/a/34872454
-print("-I-: most important features:")
-def print_model_feats_important(model):
-    for i in np.argsort(model.feature_importances_)[::-1]:
-      if model.feature_importances_[i] == 0:
-        continue
-      print("%f : %s" % (model.feature_importances_[i],predictors[i]))
 if(1):
     # TODO : create a df of featdef with these attributes
     predictors  = list(featdef[(featdef.regtype != False) & (featdef.type == 'int') & (featdef.target != True) & (featdef.dummies == False)].index)
@@ -122,26 +114,20 @@ if(1):
     print(model_selection.cross_val_score(clf, X_test, y_test.values.ravel()))
 
     # print important features
-    print_model_feats_important(clf)
+    print("-I-: most important features:")
+    clf_imp_feats = print_model_feats_important(clf, predictors)
+    ax = get_ax_barh(clf_imp_feats, title="DecisionTree Important Features")
+    plt.show()
 
-    # plot important features
-    alreadyseen = {}
-    for i in np.argsort(clf.feature_importances_)[::-1]:
-      feat = predictors[i]
-      #feat = predictors[i].replace('bin_','')
-      pltkind = 'pie'
-      print("%s" % ( feat))
-      if(featdef.ix[feat].origin):
-          feat_orig = featdef.ix[predictors[i]].origin
-          #print("testing %s - %s" % ( feat_orig, feat))
-          if(not feat_orig in alreadyseen):
-              alreadyseen[feat_orig] = 1
-              data[feat_orig].value_counts().plot(kind=pltkind, title="%s - original values for %s" % (feat_orig, feat))
-          #else:
-              #print("%d for %s - skipping %s" % (alreadyseen[feat_orig], feat_orig, feat))
-      else:
-          data[feat].value_counts().plot(kind=pltkind, title="%s " % (feat))
-      plt.show()
+    print_imp_feats_piecharts(data,featdef, clf,predictors)
+
+    y_pred = clf.predict(X_test)
+    clf.fit(X_train,y_train)
+    from sklearn.metrics import confusion_matrix
+    cm = confusion_matrix(y_test,clf.predict(X_test))
+    plot_confusion_matrix(cm,classes=['fubar','aight'])
+    plt.show()
+
 
 
 
@@ -171,6 +157,9 @@ print(model_selection.cross_val_score(clf, X_train, y_train.values.ravel()))
 y_pred = clf.predict_proba(X_test)
 print("-I-: cross_val_score against test")
 print(model_selection.cross_val_score(clf, X_test, y_test.values.ravel()))
+cm = confusion_matrix(y_test,clf.predict(X_test))
+plot_confusion_matrix(cm,classes=['fubar','aight'])
+plt.show()
 
 # DOC: How to interpret decision trees' graph results and find most informative features?
 # src: http://stackoverflow.com/a/34872454
